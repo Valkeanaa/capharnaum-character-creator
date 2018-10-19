@@ -21,6 +21,7 @@
 <!-- Included CSS Files (Compressed) -->
 <link rel="stylesheet" href="stylesheets/foundation.min.css">
 <link rel="stylesheet" href="stylesheets/app.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
 <script src="javascripts/modernizr.foundation.js"></script>
 
@@ -384,6 +385,24 @@
                     </fieldset>
                 </div>
             </div>
+        </fieldset>
+    </div>
+    <div class="row">
+        <fieldset id="competences">
+            <legend>Sauvegarde des personnages</legend>
+            <div class="row">
+                <div class="four columns offset-by-eight repartition_compte">
+                    Nombre de personnages : <strong class="round label" id="numProfiles">x</strong>
+                </div>
+            </div>
+		<form id="form01" action="saveProfile()" onsubmit="return false;" >
+			<input id="newProfileName">
+			<button onclick="saveProfile()">Sauvegarder</button>
+			<button onclick="clearProfiles()">Tout effacer</button>
+		</form>
+
+		<div id="profileList" class="gridIt"></div>
+
         </fieldset>
     </div>
     <div class="reveal-modal" id="lapopin">

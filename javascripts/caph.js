@@ -2,6 +2,7 @@ jQuery(document).ready(function() {
 	var perso = {
 		sang : '',
 		tribu : '',
+		loading : false,
 		bonus_sang : {
 		},
 		bonus_parole : {
@@ -470,7 +471,7 @@ jQuery(document).ready(function() {
 	$('#sang').change(function() {
 		var value = $(this).val();
 		$('#tribu').html('');
-		perso.sang = '';
+		if( !perso.loading ) perso.sang = '';
 		if (arbo_sang[value] != undefined) {
 			perso.sang = value;
 			var data_sang = arbo_sang[value];
@@ -489,8 +490,10 @@ jQuery(document).ready(function() {
 	
 	$('#tribu').change(function() {
 		var value = $(this).val();
-		perso.tribu = value;
-		perso.bonus_sang = {};
+		if( !perso.loading ) {
+			perso.tribu = value;
+			perso.bonus_sang = {};
+		}
 		var sang_tribus = arbo_sang[perso.sang].valeurs;
 		for (var i = 0; i < sang_tribus.length; i++) {
 			var tribu = sang_tribus[i];
@@ -522,7 +525,7 @@ jQuery(document).ready(function() {
 
 	// gestion du choix des paroles
 	$('#parole').change(function() {
-		perso.bonus_parole = {};
+		if( !perso.loading ) perso.bonus_parole = {};
 		var parole_cle = parseInt($(this).val());
 		if (arbo_parole[parole_cle] != undefined) {
 			var parole = arbo_parole[parole_cle];
@@ -544,6 +547,9 @@ jQuery(document).ready(function() {
 		}
 		heroisme = Math.floor(sum/keys_vertus.length);
 		$('#heroisme').val(heroisme);
+		/*perso.vertus = {foi:parseInt($('#foi').val()),
+			bravoure:parseInt($('#bravoure').val()),
+			fidelite:parseInt($('#fidelite').val()), heroisme:heroisme};*/
 	});
 
 	var controle_compte_vertus = function() {
@@ -580,7 +586,7 @@ jQuery(document).ready(function() {
 	}
 	$('#figures').on('sortupdate', function() {
 		var ids = $('#figures').sortable('toArray');
-		perso.bonus_figure = {};
+		if( !perso.loading ) perso.bonus_figure = {};
 		for (var i = 0; i < ids.length; i++) {
 			var fig_key = parseInt(ids[i].split('_')[1]);
 			for (var j = 4*fig_key; j <= 4*fig_key+3; j++) {
@@ -666,6 +672,7 @@ jQuery(document).ready(function() {
 	$('#caracteristiques').on('change', 'input[type=number]', calculeLesTrucs);
 
 	perso.applyBonus = function(bonus_str, bonus_key, async) {
+
 		var kv = bonus_str.split('+');
 		var key = kv[0];
 		var val = parseInt(kv[1]);
@@ -800,29 +807,29 @@ jQuery(document).ready(function() {
 			key = keys_comps[i];
 			$('#'+key).val(perso.comps[key]);
 		}
-
+	
 		var bonus_etape_3 = perso.bonus_etape_3;
 		var sum = 0;
 		for (val in bonus_etape_3) {
 			sum += bonus_etape_3[val];
 		}
-
+	
 		$('#points_carac').html(6 - sum);
-
+	
 		var bonus_etape_5 = perso.bonus_etape_5;
 		var sum = 0;
 		for (val in bonus_etape_5) {
 			sum += bonus_etape_5[val];
 		}
 		$('#points_comp').html(perso.repartition_libre_competences - sum);
-
+	
 		calculeLesTrucs();
 	}
-
+	
 	$('#sang').change();
 	perso.calculeTotaux();
 	perso.synchroWithView();
-
+	
 	window.perso = perso;
 	
 	$('input[type=number]').change(function() {
@@ -832,4 +839,228 @@ jQuery(document).ready(function() {
 			$(this).removeClass('error');
 		}
 	});
+
+	///// SAVING CHATACTERS ///////////////////////////////////////////////////////////////////////////////
+	
+	var profiles = [];
+	
+	// Load ALL the profiles saved in localStorage
+	loadProfiles = function()
+	{
+		var profJSON = localStorage.getItem("profiles");
+		if( !profJSON ) return;
+	
+		var prof = JSON.parse(localStorage.getItem("profiles"));
+		if( prof != null) {
+			profiles = prof;
+			populateProfiles();
+			findLastEditedProfile();
+		}
+	}
+	
+	// Display the list of ALL the available profiles
+	populateProfiles = function()
+	{
+		document.getElementById("profileList").innerHTML = "";
+		profiles.forEach( function(p) {
+
+			var data = JSON.parse(p.data);
+			var sang = findSangText( data );
+			var tribu = findTribuText( data );
+			var parole = findParoleText( data );
+		
+			var newFieldSet  = "<div><fieldset onclick=\"setCurrentValues('"+p.label+"')\"><legend>"+p.label+" <a href='#' onclick=\"deleteProfile('"+p["label"]+"')\"><i class=\"fa fa-trash\"></i></a></legend>";
+			newFieldSet += "<div><p>"+sang.text+"</p></div>"
+			newFieldSet += "<div><p>"+tribu+"</p></div>"
+			newFieldSet += "<div>Parole<p><i>"+parole+"</i></p></div>"
+			newFieldSet += "<div>Date<p><i>"+new Date(p.time).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute:'numeric' })+"</i></p></div>";
+			newFieldSet += "</fieldset></div>";
+
+			document.getElementById("profileList").innerHTML += newFieldSet;
+		});
+
+		document.getElementById("numProfiles").textContent = profiles.length;
+	}
+	
+	// Find sang text
+	findSangText = function( data )
+	{
+		if( !data.sang ) return "";
+		
+		var select = document.getElementById("sang")
+		for (i=0; i<select.options.length; i++)
+			if( select.options[i].value == data.sang )
+				return {index:i, text:select.options[i].text};
+	}
+	
+	// Find tribu text
+	findTribuText = function( data )
+	{
+		if( !data.sang || !data.tribu ) return "";
+		
+		var tribu =  arbo_sang[data.sang].valeurs;
+		for (i=0; i<tribu.length; i++)
+			if( tribu[i].cle == data.tribu )
+				return tribu[i].libelle	
+	}
+	
+	// Find parole text
+	findParoleText = function( data )
+	{
+		if( !data.parole ) return "";
+
+		return arbo_parole[data.parole].libelle;
+	}
+	
+	// Find the latest saved profile
+	findLastEditedProfile = function()
+	{
+		if( profiles.length == 0 ) return;
+	
+		var lastProfile = profiles.reduce(function (prev, current) {
+			return (prev.time > current.time) ? prev : current
+		});
+		setCurrentValues(lastProfile["label"]);
+	}
+	
+	// Save the current profile
+	saveProfile = function()
+	{
+		var label = document.getElementById("newProfileName").value;
+		var profile = profiles.find(obj => {
+			return obj.label === label
+		})
+		
+		var d = new Date();
+		var n = d.getTime();
+		var data = collectData();
+		
+		if( profile ){
+			profile.time = n;
+			profile.data = data;
+		} else {
+			var newProfile = {label:label, time:n, data:data};
+			profiles.push(newProfile);
+		}
+		
+		localStorage.setItem("profiles", JSON.stringify(profiles));
+		populateProfiles();
+		findLastEditedProfile();
+	}
+
+	collectData = function()
+	{
+		//- add vertus values
+		perso.vertus = {}
+		perso.vertus.reste = parseInt(document.getElementById("vertus_points").textContent);
+		$('#vertus_heroiques input').each(function () {
+			perso.vertus[this.id] = parseInt(this.value);
+		});
+
+		//- add figures values
+		perso.ids = document.getElementById("figures").innerHTML;
+		
+		//- return the dataset to backup 
+		return JSON.stringify(perso);
+	}
+	
+	// Set the Character Sheet data
+	setCurrentValues = function( ID )
+	{
+		var result = profiles.find(obj => {
+			return obj.label === ID
+		})
+		document.getElementById("newProfileName").value = result.label;
+
+		perso = Object.assign(perso, JSON.parse(result.data));
+		perso.loading = true;
+		perso.calculeTotaux();
+		perso.synchroWithView();
+		
+		var changeEvent = new Event('change');
+		var sortEvent = new Event('sortupdate');
+	
+		//-sang
+		document.getElementById("sang").value = perso.sang;
+		document.getElementById("sang").dispatchEvent(changeEvent);
+
+		//-tribu
+		setTimeout(function(){
+			document.getElementById("tribu").value = perso.tribu;
+			perso.loading = false;
+		}, 200 );
+
+		//-parole
+		document.getElementById("parole").value = perso.parole;
+
+		//-vertus
+		for( var key in perso.vertus ) {
+			if( key != 'reste')
+				document.getElementById(key).value = perso.vertus[key];
+			else
+				document.getElementById("vertus_points").textContent = perso.vertus[key].toString();
+		};
+
+		//-caracteristiques
+		for( var key in perso.caracs ) {
+			if( key != 'reste')
+				document.getElementById(key).value = perso.caracs[key];
+			else
+				document.getElementById("points_carac").textContent = perso.caracs[key].toString();
+		};
+
+		//-figures
+		document.getElementById("figures").innerHTML = perso.ids;
+		document.getElementById("figures").dispatchEvent(sortEvent);
+
+		//-competences
+		for( var key in perso.comps ) {
+			if( key != 'reste')
+				document.getElementById(key).value = perso.comps[key];
+			else
+				document.getElementById("points_comp").textContent = perso.comps[key].toString();
+		};
+
+		perso.synchroWithView();
+		window.scrollTo(0,0);
+	}
+	
+	// Delete ONE given profile from the localStorage
+	deleteProfile = function( ID )
+	{
+		profiles = profiles.filter(function(p) { return p.label != ID; });
+		localStorage.setItem("profiles", JSON.stringify(profiles));
+	
+		populateProfiles();
+		findLastEditedProfile();
+	}
+	
+	// Delete ALL profiles
+	clearProfiles = function()
+	{
+		localStorage.removeItem("profiles");
+		profiles = []
+		populateProfiles()
+	}
+	
+	// Check browser support
+	if (typeof(Storage) !== "undefined") {
+		setTimeout(function(){ loadProfiles()}, 500);
+	} else {
+		document.getElementById("profileList").innerHTML = "Sorry, your browser does not support Web Storage...";
+	}
+
+	// Init actions
+	$('#deleteBTN').on('click', function() {
+		clearProfiles();
+	});
+
+	$('#submitBTN').on('click', function() {
+		saveProfile();
+	});
+
+	$('#newProfileName').submit( function() {
+		saveProfile();
+	});
 });
+
