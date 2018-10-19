@@ -547,9 +547,6 @@ jQuery(document).ready(function() {
 		}
 		heroisme = Math.floor(sum/keys_vertus.length);
 		$('#heroisme').val(heroisme);
-		/*perso.vertus = {foi:parseInt($('#foi').val()),
-			bravoure:parseInt($('#bravoure').val()),
-			fidelite:parseInt($('#fidelite').val()), heroisme:heroisme};*/
 	});
 
 	var controle_compte_vertus = function() {
